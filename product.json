@@ -1,0 +1,16 @@
+{
+    "name": "KmsTool",
+    "author": "dsx42",
+    "license": "GPL-3.0",
+    "home": "https://github.com/dsx42/KmsTool",
+    "version": "2022.8.13",
+    "files": [
+        "KmsTool.cmd",
+        "KmsTool.ps1",
+        "product.json",
+        "LICENSE",
+        "README.md",
+        "setup.exe",
+        "vlmcs-Windows-x86.exe"
+    ]
+}
