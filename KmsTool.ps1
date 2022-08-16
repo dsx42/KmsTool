@@ -164,7 +164,8 @@ function GetWindowsActiveInfo {
     }
     $WindowsActiveInfo['TailKey'] = $WindowsProduct.PartialProductKey
     $WindowsActiveInfo['LeftMinutes'] = $WindowsProduct.GracePeriodRemaining
-    $WindowsActiveInfo['ActiveEndTime'] = (Get-Date).AddMinutes($WindowsProduct.GracePeriodRemaining).ToString('yyyy-MM-dd HH:mm:ss')
+    $WindowsActiveInfo['ActiveEndTime'] = (Get-Date).AddMinutes($WindowsProduct.GracePeriodRemaining).`
+        ToString('yyyy-MM-dd HH:mm:ss')
 
     return $WindowsActiveInfo
 }
@@ -270,22 +271,63 @@ function GetWindowsGvlk {
 }
 
 function TestKms {
-    param (
-        $KmsHost
-    )
+    param ($KmsHost, $OsppPath)
 
-    $Results = & "$PSScriptRoot\vlmcs-Windows-x86.exe" "${KmsHost}" 2>&1
-    foreach ($Result in $Results) {
-        if ($null -ne $Result -and $Result -is [System.Management.Automation.ErrorRecord]) {
+    $IsValid = Test-NetConnection -ComputerName $KmsHost -Port 1688 -InformationLevel Quiet
+    if (!$IsValid) {
+        Write-Host -Object ''
+        Write-Warning -Message "KMS 激活服务器 $KmsHost 不可用"
+        return $false
+    }
+
+    if (!$OsppPath) {
+        CScript //Nologo "$env:windir\System32\slmgr.vbs" /skms $KmsHost | Out-Null
+        $Results = CScript //Nologo "$env:windir\System32\slmgr.vbs" /ato
+        if (!$Results) {
+            Write-Host -Object ''
+            Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
             return $false
+        }
+
+        foreach ($Result in $Results) {
+            if (!$Result) {
+                continue
+            }
+            if ($Result.Contains('成功地激活了产品') -or $Result.Contains('Product activated successfully')) {
+                return $true
+            }
+        }
+
+        Write-Host -Object ''
+        Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+        return $false
+    }
+
+    CScript //Nologo "$OsppPath" /sethst:$KmsHost | Out-Null
+    $Results = CScript //Nologo "$OsppPath" /act
+    if (!$Results) {
+        Write-Host -Object ''
+        Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+        return $false
+    }
+
+    foreach ($Result in $Results) {
+        if (!$Result) {
+            continue
+        }
+        if ($Result.Contains('Product activation successful') `
+                -or $Result.Contains('Offline product activation successful')) {
+            return $true
         }
     }
 
-    return $true
+    Write-Host -Object ''
+    Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+    return $false
 }
 
 function GetValidKmsServer {
-    param($KmsHost, $KmsIp)
+    param($KmsHost, $KmsIp, $OsppPath)
 
     $NeedTestKmsServer = @()
     if ($KmsHost) {
@@ -300,7 +342,7 @@ function GetValidKmsServer {
 
     foreach ($Kms in $NeedTestKmsServer) {
 
-        $Valid = TestKms -KmsHost $Kms
+        $Valid = TestKms -KmsHost $Kms -OsppPath $OsppPath
         if ($Valid) {
             return $Kms
         }
@@ -308,22 +350,20 @@ function GetValidKmsServer {
 
     while ($true) {
         Write-Host -Object ''
-        $InputOption = Read-Host -Prompt '无可用 KMS 激活服务，请输入可用 KMS 域名或 IP（0 表示退出激活），按回车键确认'
+        $InputOption = Read-Host -Prompt ('无可用的 KMS 激活服务器, 请输入可用的 KMS 激活服务器域名或 IP ' `
+                + '(0 表示退出激活), 按回车键确认')
         if ($null -eq $InputOption -or '' -eq $InputOption) {
             Write-Host -Object ''
-            Write-Warning -Message '选择无效，请重新输入'
+            Write-Warning -Message '输入无效，请重新输入'
             continue
         }
         if ('0' -ieq $InputOption) {
             return $null
         }
-        $Valid = TestKms -KmsHost $InputOption
+        $Valid = TestKms -KmsHost $InputOption -OsppPath $OsppPath
         if ($Valid) {
             return $InputOption
         }
-
-        Write-Host -Object ''
-        Write-Warning -Message "输入的 KMS 服务 $InputOption 不可用，请重新输入"
     }
 }
 
@@ -536,22 +576,14 @@ function ActiveOffice {
         $KmsIp = $Office.Value['KmsIp']
     }
 
-    $ValidKms = GetValidKmsServer -KmsHost $KmsHost -KmsIp $KmsIp
+    $ValidKms = GetValidKmsServer -KmsHost $KmsHost -KmsIp $KmsIp -OsppPath $OsppPath
     if (!$ValidKms) {
+        CScript //Nologo "$OsppPath" /remhst | Out-Null
         return
-    }
-
-    if ($ValidKms -ne $KmsHost -and $ValidKms -ne $KmsIp) {
-        Write-Host -Object ''
-        Write-Host -Object "设置 KMS 服务地址: $ValidKms"
-        Write-Host -Object ''
-        CScript //Nologo "$OsppPath" /sethst:$ValidKms
     }
 
     Write-Host -Object ''
     Write-Host -Object '开始激活 Office 2021 批量授权版'
-    Write-Host -Object ''
-    CScript //Nologo "$OsppPath" /act
 
     $NewActiveInfo = GetOfficeActiveInfo
     foreach ($Office in $NewActiveInfo.GetEnumerator()) {
@@ -601,18 +633,6 @@ function ActiveWindows {
         Write-Host -Object ($SystemInfo.Caption + ' 未激活')
     }
 
-    $ValidKms = GetValidKmsServer -KmsHost $WindowsActiveInfo['KmsHost'] -KmsIp $WindowsActiveInfo['KmsIp']
-    if (!$ValidKms) {
-        return
-    }
-
-    if ($ValidKms -ne $WindowsActiveInfo['KmsHost'] -and $ValidKms -ne $WindowsActiveInfo['KmsIp']) {
-        Write-Host -Object ''
-        Write-Host -Object "设置 KMS 服务地址: $ValidKms"
-        Write-Host -Object ''
-        CScript //Nologo "$env:windir\System32\slmgr.vbs" /skms $ValidKms
-    }
-
     $Gvlk = GetWindowsGvlk -WindowsActiveInfo $WindowsActiveInfo
     if ($null -eq $Gvlk) {
         return
@@ -625,10 +645,15 @@ function ActiveWindows {
         CScript //Nologo "$env:windir\System32\slmgr.vbs" /ipk $Gvlk
     }
 
+    $ValidKms = GetValidKmsServer -KmsHost $WindowsActiveInfo['KmsHost'] -KmsIp $WindowsActiveInfo['KmsIp'] `
+        -OsppPath $null
+    if (!$ValidKms) {
+        CScript //Nologo "$env:windir\System32\slmgr.vbs" /ckms | Out-Null
+        return
+    }
+
     Write-Host -Object ''
     Write-Host -Object "开始激活 $($SystemInfo.Caption)"
-    Write-Host -Object ''
-    CScript //Nologo "$env:windir\System32\slmgr.vbs" /ato
 
     $NewActiveInfo = GetWindowsActiveInfo
     Write-Host -Object ''
@@ -644,6 +669,8 @@ function ActiveWindows {
 }
 
 function InstallOffice {
+
+    Clear-Host
 
     $OfficeProducts = [ordered]@{
         'Word'       = 'Word';
@@ -710,6 +737,7 @@ function InstallOffice {
 
 function CleanFile {
 
+    Clear-Host
     Set-Location -Path "$PSScriptRoot"
 
     if (Test-Path -Path Office -PathType Container) {
@@ -718,9 +746,6 @@ function CleanFile {
     if (Test-Path -Path configuration.xml -PathType Leaf) {
         Remove-Item -Path configuration.xml -Force
     }
-    if (Test-Path -Path 1 -PathType Leaf) {
-        Remove-Item -Path 1 -Force
-    }
 
     Write-Host -Object ''
     Write-Host -Object 'Office 安装文件缓存清理完成'
@@ -728,6 +753,8 @@ function CleanFile {
 
 function CreateShortcut {
     param ($Type)
+
+    Clear-Host
 
     $TargetPath = [System.Environment]::GetFolderPath([Environment+SpecialFolder]::Programs) + '\KmsTool.lnk'
     if ($Type -eq 1) {
@@ -797,20 +824,17 @@ function MainMenu {
     if ('1' -eq $InputOption) {
         InstallOffice
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键返回主菜单'
-        MainMenu
+        Read-Host -Prompt '按确认键退出'
     }
     if ('2' -eq $InputOption) {
         ActiveOffice
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键返回主菜单'
-        MainMenu
+        Read-Host -Prompt '按确认键退出'
     }
     if ('3' -eq $InputOption) {
         ActiveWindows
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键返回主菜单'
-        MainMenu
+        Read-Host -Prompt '按确认键退出'
     }
     if ('4' -eq $InputOption) {
         CleanFile

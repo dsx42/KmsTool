@@ -23,11 +23,6 @@
 * 本工具使用的 `setup.exe` 用于下载 Office 官方安装文件和安装 Office
 * 提取自微软的 Office Deployment Tool：https://www.microsoft.com/en-us/download/details.aspx?id=49117
 
-## vlmcs-Windows-x86.exe
-
-* 本工具使用的 `vlmcs-Windows-x86.exe` 用于检测 KMS 服务器是否可用
-* 提取自 https://github.com/Wind4/vlmcsd/releases
-
 # 参考资料
 
 * Office 部署文件官方在线生成器：https://config.office.com/deploymentsettings
