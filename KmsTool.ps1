@@ -42,63 +42,103 @@ function GetVertion {
 }
 
 function GetOfficeActiveInfo {
+    param($OsppPath)
 
-    # 从 OSPP.VBS 获得这个 ID
-    $OfficeAppId = '0ff1ce15-a989-479d-af46-f275c6370663'
-    $Products = Get-CimInstance -ClassName SoftwareLicensingProduct
-    $OfficeProducts = @{}
-    foreach ($Product in $Products) {
-        if ($OfficeAppId -ine $Product.ApplicationID) {
-            continue
-        }
-        if ($null -eq $Product.ProductKeyID) {
-            continue
-        }
-        if ('' -eq $Product.ProductKeyID) {
-            continue
-        }
-        if (!$Product.Description.Contains('KMS')) {
-            continue
-        }
-        $Name = 'Office'
-        if ($Product.Name.Contains('Project')) {
-            $Name = 'Project'
-        }
-        elseif ($Product.Name.Contains('Visio')) {
-            $Name = 'Visio'
-        }
-        $KmsIp = ''
-        if ($Product.DiscoveredKeyManagementServiceMachineIpAddress) {
-            $KmsIp = $Product.DiscoveredKeyManagementServiceMachineIpAddress
-        }
-        $KmsHost = ''
-        if ($Product.KeyManagementServiceMachine) {
-            $KmsHost = $Product.KeyManagementServiceMachine
-        }
-        $IsActive = $false
-        if (1 -eq $Product.LicenseStatus) {
-            $IsActive = $true
-        }
-        $LeftMinutes = 0
-        $ActiveEndTime = ''
-        if ($Product.GracePeriodRemaining) {
-            $LeftMinutes = $Product.GracePeriodRemaining
-            $ActiveEndTime = (Get-Date).AddMinutes($Product.GracePeriodRemaining).ToString('yyyy-MM-dd HH:mm:ss')
-        }
-        $OfficeProducts.Add($Name, @{
-                'Name'          = $Name;
-                'KmsIp'         = $KmsIp;
-                'KmsHost'       = $KmsHost;
-                'IsActive'      = $IsActive;
-                'LeftMinutes'   = $LeftMinutes; # 激活有效时间，单位为分钟
-                'ActiveEndTime' = $ActiveEndTime
-            })
-    }
-    if ($OfficeProducts.Count -le 0) {
-        return $null
+    $OfficeActiveInfo = @{
+        'Name'          = '';
+        'IsVolume'      = $false;
+        'KmsHost'       = '';
+        'IsActive'      = $false;
+        'LeftMinutes'   = 0; # 激活有效时间，单位为分钟
+        'ActiveEndTime' = ''
     }
 
-    return $OfficeProducts
+    $Results = CScript //Nologo "$OsppPath" /dstatus
+    if (!$Results) {
+        return $OfficeActiveInfo
+    }
+
+    foreach ($Result in $Results) {
+        if (!$Result) {
+            continue
+        }
+
+        if ($Result.Contains('LICENSE NAME: ')) {
+            if ($Result.Contains('Office21Project')) {
+                $OldName = $OfficeActiveInfo['Name']
+                if (!$OldName) {
+                    $OfficeActiveInfo['Name'] = 'Project 2021'
+                }
+                else {
+                    $OfficeActiveInfo['Name'] = $OldName + ', Project 2021'
+                }
+            }
+            elseif ($Result.Contains('Office21Visio')) {
+                $OldName = $OfficeActiveInfo['Name']
+                if (!$OldName) {
+                    $OfficeActiveInfo['Name'] = 'Visio 2021'
+                }
+                else {
+                    $OfficeActiveInfo['Name'] = $OldName + ', Visio 2021'
+                }
+            }
+            elseif ($Result.Contains('Office21ProPlus') -or $Result.Contains('Office21Standard')) {
+                $OldName = $OfficeActiveInfo['Office']
+                if (!$OldName) {
+                    $OfficeActiveInfo['Name'] = 'Office 2021'
+                }
+                else {
+                    $OfficeActiveInfo['Name'] = $OldName + ', Office 2021'
+                }
+            }
+            continue
+        }
+
+        if ($Result.Contains('LICENSE DESCRIPTION: ') -and $Result.Contains('KMS')) {
+            $OfficeActiveInfo['IsVolume'] = $true
+            continue
+        }
+
+        if ($Result.Contains('KMS machine registry override defined: ')) {
+            $Entries = $Result.Split(':', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 2) {
+                $OfficeActiveInfo['KmsHost'] = ''
+                continue
+            }
+            $OfficeActiveInfo['KmsHost'] = $Entries[1].Trim()
+            continue
+        }
+
+        if ($Result.Contains('LICENSE STATUS: ') -and $Result.Contains('---LICENSED---')) {
+            $OfficeActiveInfo['IsActive'] = $true
+            continue
+        }
+
+        if ($Result.Contains('REMAINING GRACE: ')) {
+            $Entries = $Result.Split('(', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 2) {
+                $OfficeActiveInfo['LeftMinutes'] = 0
+                $OfficeActiveInfo['ActiveEndTime'] = ''
+                continue
+            }
+
+            $SubEntries = $null
+            if ($Result.Contains('minute')) {
+                $SubEntries = $Entries[1].Split('minute', [System.StringSplitOptions]::RemoveEmptyEntries)
+            }
+            if (!$SubEntries -or $SubEntries.Length -lt 1) {
+                $OfficeActiveInfo['LeftMinutes'] = 0
+                $OfficeActiveInfo['ActiveEndTime'] = ''
+                continue
+            }
+
+            $OfficeActiveInfo['LeftMinutes'] = [System.Int32]$SubEntries[0].Trim()
+            $OfficeActiveInfo['ActiveEndTime'] = (Get-Date).AddMinutes([System.Int32]$SubEntries[0].Trim()).`
+                ToString('yyyy-MM-dd HH:mm:ss')
+        }
+    }
+
+    return $OfficeActiveInfo
 }
 
 function GetWindowsActiveInfo {
@@ -113,59 +153,92 @@ function GetWindowsActiveInfo {
         'ActiveEndTime' = ''
     }
 
-    # 从 slmgr.vbs 获得这个 ID
-    $WindowsAppId = '55c92734-d682-4d71-983e-d6ec3f16059f'
-    $Products = Get-CimInstance -ClassName SoftwareLicensingProduct
-    $WindowsProduct = $null
-    foreach ($Product in $Products) {
-        if ($WindowsAppId -ine $Product.ApplicationID) {
-            continue
-        }
-        if ($null -eq $Product.PartialProductKey) {
-            continue
-        }
-        if ('' -eq $Product.PartialProductKey) {
-            continue
-        }
-        if (!$Product.LicenseIsAddon) {
-            continue
-        }
-        $WindowsProduct = $Product
-        break
-    }
-    if ($null -eq $WindowsProduct) {
-        foreach ($Product in $Products) {
-            if ($WindowsAppId -ine $Product.ApplicationID) {
-                continue
-            }
-            if ($null -eq $Product.PartialProductKey) {
-                continue
-            }
-            if ('' -eq $Product.PartialProductKey) {
-                continue
-            }
-            if ($Product.Description.Contains('VOLUME_KMSCLIENT') -or $Product.Description.Contains('VOLUME_KMS')) {
-                $WindowsProduct = $Product
-                break
-            }
-        }
-    }
-    if ($null -eq $WindowsProduct) {
+    $Results = CScript //Nologo "$env:windir\System32\slmgr.vbs" /dli
+    if (!$Results) {
         return $WindowsActiveInfo
     }
 
-    if ($WindowsProduct.Description.Contains('VOLUME_KMSCLIENT')) {
-        $WindowsActiveInfo['IsVolume'] = $true
+    foreach ($Result in $Results) {
+        if (!$Result) {
+            continue
+        }
+        if ($Result.Contains('VOLUME_KMSCLIENT') -or $Result.Contains('VOLUME_KMS')) {
+            $WindowsActiveInfo['IsVolume'] = $true
+            continue
+        }
+        if ($Result.Contains('KMS 计算机 IP 地址: ') -or $Result.Contains('KMS machine IP address: ')) {
+            if ($Result.Contains('不可用') -or $Result.Contains('not available')) {
+                $WindowsActiveInfo['KmsIp'] = ''
+                continue
+            }
+            $Entries = $Result.Split(':', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 2) {
+                $WindowsActiveInfo['KmsIp'] = ''
+                continue
+            }
+            $WindowsActiveInfo['KmsIp'] = $Entries[1].Trim()
+            continue
+        }
+        if ($Result.Contains('已注册的 KMS 计算机名称: ') -or $Result.Contains('Registered KMS machine name: ') `
+                -or $Result.Contains('来自 DNS 的 KMS 计算机名称: ') `
+                -or $Result.Contains('KMS machine name from DNS: ')) {
+            if ($Result.Contains('KMS 名称不可用') -or $Result.Contains('KMS name not available')) {
+                $WindowsActiveInfo['KmsHost'] = ''
+                continue
+            }
+            $Entries = $Result.Split(':', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 3) {
+                $WindowsActiveInfo['KmsHost'] = ''
+                continue
+            }
+            $WindowsActiveInfo['KmsHost'] = $Entries[1].Trim()
+            continue
+        }
+        if ($Result.Contains('许可证状态: ') -or $Result.Contains('License Status: ')) {
+            if ($Result.Contains('已授权') -or $Result.COntains('Licensed')) {
+                $WindowsActiveInfo['IsActive'] = $true
+            }
+            else {
+                $WindowsActiveInfo['IsActive'] = $false
+            }
+            continue
+        }
+        if ($Result.Contains('部分产品密钥: ') -or $Result.Contains('Partial Product Key: ')) {
+            $Entries = $Result.Split(':', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 2) {
+                $WindowsActiveInfo['TailKey'] = ''
+                continue
+            }
+            $WindowsActiveInfo['TailKey'] = $Entries[1].Trim()
+            continue
+        }
+        if ($Result.Contains('激活过期: ') -or $Result.Contains('activation expiration: ')) {
+
+            $Entries = $Result.Split(':', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if (!$Entries -or $Entries.Length -lt 2) {
+                $WindowsActiveInfo['LeftMinutes'] = 0
+                $WindowsActiveInfo['ActiveEndTime'] = ''
+                continue
+            }
+
+            $SubEntries = $null
+            if ($Result.Contains('分钟')) {
+                $SubEntries = $Entries[1].Split('分钟', [System.StringSplitOptions]::RemoveEmptyEntries)
+            }
+            elseif ($Result.Contains('minute')) {
+                $SubEntries = $Entries[1].Split('minute', [System.StringSplitOptions]::RemoveEmptyEntries)
+            }
+            if (!$SubEntries -or $SubEntries.Length -lt 1) {
+                $WindowsActiveInfo['LeftMinutes'] = 0
+                $WindowsActiveInfo['ActiveEndTime'] = ''
+                continue
+            }
+
+            $WindowsActiveInfo['LeftMinutes'] = [System.Int32]$SubEntries[0].Trim()
+            $WindowsActiveInfo['ActiveEndTime'] = (Get-Date).AddMinutes([System.Int32]$SubEntries[0].Trim()).`
+                ToString('yyyy-MM-dd HH:mm:ss')
+        }
     }
-    $WindowsActiveInfo['KmsIp'] = $WindowsProduct.DiscoveredKeyManagementServiceMachineIpAddress
-    $WindowsActiveInfo['KmsHost'] = $WindowsProduct.KeyManagementServiceMachine
-    if (1 -eq $WindowsProduct.LicenseStatus) {
-        $WindowsActiveInfo['IsActive'] = $true
-    }
-    $WindowsActiveInfo['TailKey'] = $WindowsProduct.PartialProductKey
-    $WindowsActiveInfo['LeftMinutes'] = $WindowsProduct.GracePeriodRemaining
-    $WindowsActiveInfo['ActiveEndTime'] = (Get-Date).AddMinutes($WindowsProduct.GracePeriodRemaining).`
-        ToString('yyyy-MM-dd HH:mm:ss')
 
     return $WindowsActiveInfo
 }
@@ -273,7 +346,8 @@ function GetWindowsGvlk {
 function TestKms {
     param ($KmsHost, $OsppPath)
 
-    $IsValid = Test-NetConnection -ComputerName $KmsHost -Port 1688 -InformationLevel Quiet
+    $IsValid = Test-NetConnection -ComputerName $KmsHost -Port 1688 -InformationLevel Quiet `
+        -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
     if (!$IsValid) {
         Write-Host -Object ''
         Write-Warning -Message "KMS 激活服务器 $KmsHost 不可用"
@@ -285,7 +359,7 @@ function TestKms {
         $Results = CScript //Nologo "$env:windir\System32\slmgr.vbs" /ato
         if (!$Results) {
             Write-Host -Object ''
-            Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+            Write-Warning -Message "系统所在网络无法访问此 KMS 激活服务器 $KmsHost"
             return $false
         }
 
@@ -299,7 +373,7 @@ function TestKms {
         }
 
         Write-Host -Object ''
-        Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+        Write-Warning -Message "系统所在网络无法访问此 KMS 激活服务器 $KmsHost"
         return $false
     }
 
@@ -307,7 +381,7 @@ function TestKms {
     $Results = CScript //Nologo "$OsppPath" /act
     if (!$Results) {
         Write-Host -Object ''
-        Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+        Write-Warning -Message "系统所在网络无法访问此 KMS 激活服务器 $KmsHost"
         return $false
     }
 
@@ -322,7 +396,7 @@ function TestKms {
     }
 
     Write-Host -Object ''
-    Write-Warning -Message "KMS 激活服务器 $KmsHost 可用, 但系统所在网络的管理员禁止了此 KMS 激活服务器的访问"
+    Write-Warning -Message "系统所在网络无法访问此 KMS 激活服务器 $KmsHost"
     return $false
 }
 
@@ -333,7 +407,7 @@ function GetValidKmsServer {
     if ($KmsHost) {
         $NeedTestKmsServer += $KmsHost
     }
-    if ($KmsIp) {
+    if (!$KmsHost -and $KmsIp) {
         $NeedTestKmsServer += $KmsIp
     }
     foreach ($Kms in $Script:kmsServers) {
@@ -552,31 +626,25 @@ function ActiveOffice {
         return
     }
 
-    $OfficeActiveInfo = GetOfficeActiveInfo
-    if (!$OfficeActiveInfo) {
+    $OfficeActiveInfo = GetOfficeActiveInfo -OsppPath $OsppPath
+    if (!$OfficeActiveInfo['IsVolume']) {
         Write-Host -Object ''
         Write-Warning -Message '未安装 Office 2021 批量授权版，无法激活'
         return
     }
 
-    $KmsHost = ''
-    $KmsIp = ''
-    foreach ($Office in $OfficeActiveInfo.GetEnumerator()) {
-        Write-Host -Object ''
-        if ($Office.Value['IsActive']) {
-            Write-Host -Object ($Office.Value['Name'] + ' 已激活, 激活有效期至 ' + $Office.Value['ActiveEndTime'])
-        }
-        elseif ($Office.Value['ActiveEndTime']) {
-            Write-Host -Object ($Office.Value['Name'] + ' 激活有效期至 ' + $Office.Value['ActiveEndTime'])
-        }
-        else {
-            Write-Host -Object ($Office.Value['Name'] + ' 未激活')
-        }
-        $KmsHost = $Office.Value['KmsHost']
-        $KmsIp = $Office.Value['KmsIp']
+    Write-Host -Object ''
+    if ($OfficeActiveInfo['IsActive']) {
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 已激活, 激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
+    }
+    elseif ($OfficeActiveInfo['ActiveEndTime']) {
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
+    }
+    else {
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 未激活')
     }
 
-    $ValidKms = GetValidKmsServer -KmsHost $KmsHost -KmsIp $KmsIp -OsppPath $OsppPath
+    $ValidKms = GetValidKmsServer -KmsHost $OfficeActiveInfo['KmsHost'] -KmsIp '' -OsppPath $OsppPath
     if (!$ValidKms) {
         CScript //Nologo "$OsppPath" /remhst | Out-Null
         return
@@ -585,20 +653,16 @@ function ActiveOffice {
     Write-Host -Object ''
     Write-Host -Object '开始激活 Office 2021 批量授权版'
 
-    $NewActiveInfo = GetOfficeActiveInfo
-    foreach ($Office in $NewActiveInfo.GetEnumerator()) {
-        $OldOffice = $OfficeActiveInfo[$Office.Value['Name']]
-        Write-Host -Object ''
-        if ($Office.Value['IsActive'] -and $OldOffice['ActiveEndTime'] -ne $Office.Value['ActiveEndTime']) {
-            Write-Host -Object ($Office.Value['Name'] + ' 批量授权版激活成功, 激活有效期至 ' `
-                    + $Office.Value['ActiveEndTime'])
-        }
-        elseif ($Office.Value['ActiveEndTime']) {
-            Write-Host -Object ($Office.Value['Name'] + ' 激活有效期至 ' + $Office.Value['ActiveEndTime'])
-        }
-        else {
-            Write-Host -Object ($Office.Value['Name'] + ' 批量授权版激活失败')
-        }
+    $NewActiveInfo = GetOfficeActiveInfo -OsppPath $OsppPath
+    Write-Host -Object ''
+    if ($NewActiveInfo['IsActive'] -and $OfficeActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
+        Write-Host -Object ($NewActiveInfo['Name'] + ' 激活成功, 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+    }
+    elseif ($NewActiveInfo['ActiveEndTime']) {
+        Write-Host -Object ($NewActiveInfo['Name'] + ' 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+    }
+    else {
+        Write-Warning -Message ($NewActiveInfo['Name'] + ' 激活失败')
     }
 }
 
@@ -824,17 +888,20 @@ function MainMenu {
     if ('1' -eq $InputOption) {
         InstallOffice
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键退出'
+        Read-Host -Prompt '按确认键返回主菜单'
+        MainMenu
     }
     if ('2' -eq $InputOption) {
         ActiveOffice
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键退出'
+        Read-Host -Prompt '按确认键返回主菜单'
+        MainMenu
     }
     if ('3' -eq $InputOption) {
         ActiveWindows
         Write-Host -Object ''
-        Read-Host -Prompt '按确认键退出'
+        Read-Host -Prompt '按确认键返回主菜单'
+        MainMenu
     }
     if ('4' -eq $InputOption) {
         CleanFile
@@ -865,6 +932,7 @@ if ($Version) {
 RequireAdmin
 
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+$ProgressPreference = 'SilentlyContinue'
 $Host.UI.RawUI.WindowTitle = "KmsTool v$VersionInfo"
 Set-Location -Path $PSScriptRoot
 
