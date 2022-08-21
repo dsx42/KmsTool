@@ -603,6 +603,13 @@ function CreateOfficeDeploymentFile {
     Add-Content -Path configuration.xml -Value '    <Property Name="AUTOACTIVATE" Value="1" />'
     Add-Content -Path configuration.xml -Value '    <Updates Enabled="TRUE" />'
     Add-Content -Path configuration.xml -Value '    <RemoveMSI />'
+    Add-Content -Path configuration.xml -Value '    <AppSettings>'
+    Add-Content -Path configuration.xml -Value ('        <User Key="software\microsoft\office\16.0\common" ' `
+            + 'Name="sendcustomerdata" Value="0" Type="REG_DWORD" App="office16" Id="L_Sendcustomerdata" />')
+    Add-Content -Path configuration.xml -Value ('        <User Key="software\microsoft\office\16.0\common\graphics" ' `
+            + 'Name="disablehardwareacceleration" Value="1" Type="REG_DWORD" App="office16" ' `
+            + 'Id="L_DoNotUseHardwareAcceleration" />')
+    Add-Content -Path configuration.xml -Value '    </AppSettings>'
     Add-Content -Path configuration.xml -Value '    <Display Level="None" AcceptEULA="TRUE" />'
     Add-Content -Path configuration.xml -Value '</Configuration>'
 }
@@ -785,7 +792,6 @@ function InstallOffice {
 
     Write-Host -Object ''
     Write-Host -Object '正在下载 Office 2021 批量授权版安装文件，耗时较长，请勿关闭此窗口'
-    Write-Host -Object ''
     .\setup.exe /download configuration.xml
     Write-Host -Object ''
     Write-Host -Object 'Office 2021 批量授权版安装文件下载成功'
