@@ -83,7 +83,7 @@ function GetOfficeActiveInfo {
                 }
             }
             elseif ($Result.Contains('Office21ProPlus') -or $Result.Contains('Office21Standard')) {
-                $OldName = $OfficeActiveInfo['Office']
+                $OldName = $OfficeActiveInfo['Name']
                 if (!$OldName) {
                     $OfficeActiveInfo['Name'] = 'Office 2021'
                 }
@@ -523,39 +523,38 @@ function GetOfficeProductSelect {
 }
 
 function AddSubElement {
-    param ($NeedOfficeProducts)
+    param ($NeedOfficeProducts, $Language)
 
-    Add-Content -Path configuration.xml -Value '                <Language ID="MatchOS" />'
-    Add-Content -Path configuration.xml -Value '                <Language ID="MatchPreviousMSI" />'
+    Add-Content -Path configuration.xml -Value "            <Language ID=`"$Language`" />"
     if (!$NeedOfficeProducts.Contains('Access')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Access" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Access" />'
     }
     if (!$NeedOfficeProducts.Contains('Excel')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Excel" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Excel" />'
     }
     if (!$NeedOfficeProducts.Contains('Lync')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Lync" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Lync" />'
     }
     if (!$NeedOfficeProducts.Contains('OneDrive')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="OneDrive" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="OneDrive" />'
     }
     if (!$NeedOfficeProducts.Contains('OneNote')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="OneNote" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="OneNote" />'
     }
     if (!$NeedOfficeProducts.Contains('Outlook')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Outlook" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Outlook" />'
     }
     if (!$NeedOfficeProducts.Contains('PowerPoint')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="PowerPoint" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="PowerPoint" />'
     }
     if (!$NeedOfficeProducts.Contains('Publisher')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Publisher" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Publisher" />'
     }
     if (!$NeedOfficeProducts.Contains('Teams')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Teams" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Teams" />'
     }
     if (!$NeedOfficeProducts.Contains('Word')) {
-        Add-Content -Path configuration.xml -Value '                <ExcludeApp ID="Word" />'
+        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Word" />'
     }
 }
 
@@ -572,26 +571,30 @@ function CreateOfficeDeploymentFile {
     if (!$SystemInfo.OSArchitecture.Contains('64')) {
         $OfficeClientEdition = '32'
     }
+    $Language = 'MatchOS'
+    if ($SystemInfo.MUILanguages -and $SystemInfo.MUILanguages.Length -ge 1 -and $SystemInfo.MUILanguages[0]) {
+        $Language = $SystemInfo.MUILanguages[0].ToLower()
+    }
 
     Add-Content -Path configuration.xml -Value '<Configuration>'
     Add-Content -Path configuration.xml -Value ("    <Add OfficeClientEdition=`"$OfficeClientEdition`"" `
-            + " Channel=`"PerpetualVL2021`" MigrateArch=`"TRUE`">")
+            + " Channel=`"PerpetualVL2021`">")
     Add-Content -Path configuration.xml -Value ('        <Product ID="ProPlus2021Volume"' `
             + ' PIDKEY="FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH">')
-    AddSubElement -NeedOfficeProducts $NeedOfficeProducts
+    AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
     Add-Content -Path configuration.xml -Value '        </Product>'
     if ($NeedOfficeProducts.Contains('Visio')) {
         Add-Content -Path configuration.xml -Value ''
         Add-Content -Path configuration.xml -Value ('        <Product ID="VisioPro2021Volume"' `
                 + ' PIDKEY="KNH8D-FGHT4-T8RK3-CTDYJ-K2HT4">')
-        AddSubElement -NeedOfficeProducts $NeedOfficeProducts
+        AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
         Add-Content -Path configuration.xml -Value '        </Product>'
     }
     if ($NeedOfficeProducts.Contains('Project')) {
         Add-Content -Path configuration.xml -Value ''
         Add-Content -Path configuration.xml -Value ('        <Product ID="ProjectPro2021Volume"' `
                 + ' PIDKEY="FTNWT-C6WBT-8HMGF-K9PRX-QV9H8">')
-        AddSubElement -NeedOfficeProducts $NeedOfficeProducts
+        AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
         Add-Content -Path configuration.xml -Value '        </Product>'
     }
     Add-Content -Path configuration.xml -Value '    </Add>'
@@ -601,8 +604,11 @@ function CreateOfficeDeploymentFile {
     Add-Content -Path configuration.xml -Value '    <Property Name="DeviceBasedLicensing" Value="0" />'
     Add-Content -Path configuration.xml -Value '    <Property Name="SCLCacheOverride" Value="0" />'
     Add-Content -Path configuration.xml -Value '    <Property Name="AUTOACTIVATE" Value="1" />'
+    Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <Updates Enabled="TRUE" />'
+    Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <RemoveMSI />'
+    Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <AppSettings>'
     Add-Content -Path configuration.xml -Value ('        <User Key="software\microsoft\office\16.0\common" ' `
             + 'Name="sendcustomerdata" Value="0" Type="REG_DWORD" App="office16" Id="L_Sendcustomerdata" />')
@@ -610,6 +616,7 @@ function CreateOfficeDeploymentFile {
             + 'Name="disablehardwareacceleration" Value="1" Type="REG_DWORD" App="office16" ' `
             + 'Id="L_DoNotUseHardwareAcceleration" />')
     Add-Content -Path configuration.xml -Value '    </AppSettings>'
+    Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <Display Level="None" AcceptEULA="TRUE" />'
     Add-Content -Path configuration.xml -Value '</Configuration>'
 }
@@ -642,13 +649,14 @@ function ActiveOffice {
 
     Write-Host -Object ''
     if ($OfficeActiveInfo['IsActive']) {
-        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 已激活, 激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版已激活, 激活有效期至 ' `
+                + $OfficeActiveInfo['ActiveEndTime'])
     }
     elseif ($OfficeActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
     }
     else {
-        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 未激活')
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版未激活')
     }
 
     $ValidKms = GetValidKmsServer -KmsHost $OfficeActiveInfo['KmsHost'] -KmsIp '' -OsppPath $OsppPath
@@ -658,18 +666,19 @@ function ActiveOffice {
     }
 
     Write-Host -Object ''
-    Write-Host -Object '开始激活 Office 2021 批量授权版'
+    Write-Host -Object ('开始激活 ' + $OfficeActiveInfo['Name'] + ' 批量授权版')
 
     $NewActiveInfo = GetOfficeActiveInfo -OsppPath $OsppPath
     Write-Host -Object ''
     if ($NewActiveInfo['IsActive'] -and $OfficeActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($NewActiveInfo['Name'] + ' 激活成功, 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活成功, 激活有效期至 ' `
+                + $NewActiveInfo['ActiveEndTime'])
     }
     elseif ($NewActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($NewActiveInfo['Name'] + ' 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
     }
     else {
-        Write-Warning -Message ($NewActiveInfo['Name'] + ' 激活失败')
+        Write-Warning -Message ($NewActiveInfo['Name'] + ' 批量授权版激活失败')
     }
 }
 
@@ -850,26 +859,26 @@ function MainMenu {
 
     Clear-Host
 
+    $Options = [ordered]@{
+        '1' = '安装 Office 2021 批量授权版';
+        '2' = '激活 Office 2021 批量授权版';
+        '3' = '激活 Windows 10/11 批量授权版';
+        '4' = '清理 Office 安装文件缓存';
+        '5' = '创建桌面快捷方式';
+        '6' = '创建开始菜单快捷方式';
+        'q' = '退出'
+    }
+
     Write-Host -Object ''
     Write-Host -Object "=====> KmsTool v$VersionInfo https://github.com/dsx42/KmsTool <====="
     Write-Host -Object ''
     Write-Host -Object '================'
     Write-Host -Object '选择要进行的操作'
     Write-Host -Object '================'
-    Write-Host -Object ''
-    Write-Host -Object '1: 安装 Office 2021 批量授权版'
-    Write-Host -Object ''
-    Write-Host -Object '2: 激活 Office 2021 批量授权版'
-    Write-Host -Object ''
-    Write-Host -Object '3: 激活 Windows 10/11 批量授权版'
-    Write-Host -Object ''
-    Write-Host -Object '4: 清理 Office 安装文件缓存'
-    Write-Host -Object ''
-    Write-Host -Object '5: 为本工具创建桌面快捷方式'
-    Write-Host -Object ''
-    Write-Host -Object '6: 为本工具创建开始菜单快捷方式'
-    Write-Host -Object ''
-    Write-Host -Object 'q: 退出'
+    foreach ($Option in $Options.GetEnumerator()) {
+        Write-Host -Object ''
+        Write-Host -Object ($Option.Key + ': ' + $Option.Value)
+    }
 
     $InputOption = 'q'
     while ($true) {
@@ -880,8 +889,7 @@ function MainMenu {
             Write-Warning -Message '选择无效，请重新输入'
             continue
         }
-        if ('q' -ieq $InputOption -or '1' -ieq $InputOption -or '2' -ieq $InputOption -or '3' -ieq $InputOption `
-                -or '4' -ieq $InputOption -or '5' -ieq $InputOption -or '6' -ieq $InputOption) {
+        if ($Options.Contains($InputOption)) {
             break
         }
         Write-Host -Object ''
