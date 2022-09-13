@@ -1,4 +1,8 @@
-﻿function RequireAdmin {
+﻿param(
+    [switch]$Version
+)
+
+function RequireAdmin {
     $CurrentWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $CurrentWindowsPrincipal = New-Object -TypeName System.Security.Principal.WindowsPrincipal `
         -ArgumentList $CurrentWindowsID
@@ -14,14 +18,14 @@
 function GetVertion {
     $ProductJsonPath = "$PSScriptRoot\product.json"
 
-    if (!(Test-Path -Path $ProductJsonPath -PathType Leaf)) {
+    if (!(Test-Path -Path "$ProductJsonPath" -PathType Leaf)) {
         Write-Warning -Message ("$ProductJsonPath 不存在")
         [System.Environment]::Exit(0)
     }
 
     $ProductInfo = $null
     try {
-        $ProductInfo = Get-Content -Path $ProductJsonPath | ConvertFrom-Json
+        $ProductInfo = Get-Content -Path "$ProductJsonPath" | ConvertFrom-Json
     }
     catch {
         Write-Warning -Message ("$ProductJsonPath 解析失败")
@@ -250,7 +254,7 @@ function GetSelectWindowsProduction {
     Write-Host -Object ''
     Write-Host -Object "不支持激活 $($SystemInfo.Caption), 需要转换为如下批量授权版本才能激活"
     Write-Host -Object ''
-    Write-Host -Object '1: 企业版 Enterprise'
+    Write-Host -Object '1: 企业版 Enterprise' -ForegroundColor Green
     Write-Host -Object ''
     Write-Host -Object '2: 教育版 Education'
     Write-Host -Object ''
@@ -446,7 +450,7 @@ function ConfirmOfficeProducts {
 
     Write-Host -Object ''
     if ($NeedOfficeProducts.Count -le 0) {
-        Write-Host -Object '未选择安装任何 Office 2021 组件'
+        Write-Warning -Message '未选择安装任何 Office 2021 组件'
         while ($true) {
             Write-Host -Object ''
             $InputOption = Read-Host -Prompt '请选择 (0: 退出安装; 2: 重置所有选择), 按回车键确认'
@@ -470,11 +474,11 @@ function ConfirmOfficeProducts {
     foreach ($Product in $NeedOfficeProducts.GetEnumerator()) {
         if ($Product.Value) {
             Write-Host -Object ''
-            Write-Host -Object $OfficeProducts[$Product.Key]
+            Write-Host -Object $OfficeProducts[$Product.Key] -ForegroundColor Green
         }
     }
     Write-Host -Object ''
-    Write-Host -Object '注意：会卸载当前系统所有已安装的 Office 组件，重新安装上述组件'
+    Write-Warning -Message '注意：会卸载当前系统所有已安装的 Office 组件，重新安装上述组件'
     while ($true) {
         Write-Host -Object ''
         $InputOption = Read-Host -Prompt '请选择 (0: 退出安装; 1: 继续安装; 2: 重置所有选择), 按回车键确认'
@@ -650,10 +654,11 @@ function ActiveOffice {
     Write-Host -Object ''
     if ($OfficeActiveInfo['IsActive']) {
         Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版已激活, 激活有效期至 ' `
-                + $OfficeActiveInfo['ActiveEndTime'])
+                + $OfficeActiveInfo['ActiveEndTime']) -ForegroundColor Green
     }
     elseif ($OfficeActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $OfficeActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     else {
         Write-Host -Object ($OfficeActiveInfo['Name'] + ' 批量授权版未激活')
@@ -672,10 +677,11 @@ function ActiveOffice {
     Write-Host -Object ''
     if ($NewActiveInfo['IsActive'] -and $OfficeActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
         Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活成功, 激活有效期至 ' `
-                + $NewActiveInfo['ActiveEndTime'])
+                + $NewActiveInfo['ActiveEndTime']) -ForegroundColor Green
     }
     elseif ($NewActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     else {
         Write-Warning -Message ($NewActiveInfo['Name'] + ' 批量授权版激活失败')
@@ -704,10 +710,12 @@ function ActiveWindows {
     $WindowsActiveInfo = GetWindowsActiveInfo
     Write-Host -Object ''
     if ($WindowsActiveInfo['IsActive']) {
-        Write-Host -Object ($SystemInfo.Caption + ' 已激活, 激活有效期至 ' + $WindowsActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($SystemInfo.Caption + ' 已激活, 激活有效期至 ' + $WindowsActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     elseif ($WindowsActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($SystemInfo.Caption + ' 激活有效期至 ' + $WindowsActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($SystemInfo.Caption + ' 激活有效期至 ' + $WindowsActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     else {
         Write-Host -Object ($SystemInfo.Caption + ' 未激活')
@@ -720,7 +728,7 @@ function ActiveWindows {
 
     if ('' -ne $Gvlk) {
         Write-Host -Object ''
-        Write-Host -Object "安装产品密钥: $Gvlk"
+        Write-Host -Object "安装产品密钥: $Gvlk" -ForegroundColor Green
         Write-Host -Object ''
         CScript //Nologo "$env:windir\System32\slmgr.vbs" /ipk $Gvlk
     }
@@ -738,10 +746,12 @@ function ActiveWindows {
     $NewActiveInfo = GetWindowsActiveInfo
     Write-Host -Object ''
     if ($NewActiveInfo['IsActive'] -and $WindowsActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($SystemInfo.Caption + ' 激活成功, 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($SystemInfo.Caption + ' 激活成功, 激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     elseif ($NewActiveInfo['ActiveEndTime']) {
-        Write-Host -Object ($SystemInfo.Caption + ' 激活有效期至 ' + $NewActiveInfo['ActiveEndTime'])
+        Write-Host -Object ($SystemInfo.Caption + ' 激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
+            -ForegroundColor Green
     }
     else {
         Write-Warning -Message ($SystemInfo.Caption + ' 激活失败')
@@ -803,13 +813,13 @@ function InstallOffice {
     Write-Host -Object '正在下载 Office 2021 批量授权版安装文件，耗时较长，请勿关闭此窗口'
     .\setup.exe /download configuration.xml
     Write-Host -Object ''
-    Write-Host -Object 'Office 2021 批量授权版安装文件下载成功'
+    Write-Host -Object 'Office 2021 批量授权版安装文件下载成功' -ForegroundColor Green
 
     Write-Host -Object ''
     Write-Host -Object '正在安装 Office 2021 批量授权版，耗时较长，请勿关闭此窗口'
     .\setup.exe /configure configuration.xml
     Write-Host -Object ''
-    Write-Host -Object 'Office 2021 批量授权版安装完成'
+    Write-Host -Object 'Office 2021 批量授权版安装完成' -ForegroundColor Green
 
     ActiveOffice
 }
@@ -827,16 +837,16 @@ function CleanFile {
     }
 
     Write-Host -Object ''
-    Write-Host -Object 'Office 安装文件缓存清理完成'
+    Write-Host -Object 'Office 安装文件缓存清理完成' -ForegroundColor Green
 }
 
 function CreateShortcut {
-    param ($Type)
+    param ([switch]$Desktop)
 
     Clear-Host
 
     $TargetPath = [System.Environment]::GetFolderPath([Environment+SpecialFolder]::Programs) + '\KmsTool.lnk'
-    if ($Type -eq 1) {
+    if ($Desktop) {
         $TargetPath = [System.Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop) + '\KmsTool.lnk'
     }
 
@@ -852,7 +862,12 @@ function CreateShortcut {
     $Shortcut.Save()
 
     Write-Host -Object ''
-    Write-Host -Object '快捷方式创建完成'
+    if ($Desktop) {
+        Write-Host -Object '桌面快捷方式创建完成' -ForegroundColor Green
+        return
+    }
+
+    Write-Host -Object '开始菜单快捷方式创建完成' -ForegroundColor Green
 }
 
 function MainMenu {
@@ -924,13 +939,13 @@ function MainMenu {
         MainMenu
     }
     if ('5' -eq $InputOption) {
-        CreateShortcut -Type 1
+        CreateShortcut -Desktop
         Write-Host -Object ''
         Read-Host -Prompt '按确认键返回主菜单'
         MainMenu
     }
     if ('6' -eq $InputOption) {
-        CreateShortcut -Type 2
+        CreateShortcut
         Write-Host -Object ''
         Read-Host -Prompt '按确认键返回主菜单'
         MainMenu
@@ -948,7 +963,7 @@ RequireAdmin
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 $ProgressPreference = 'SilentlyContinue'
 $Host.UI.RawUI.WindowTitle = "KmsTool v$VersionInfo"
-Set-Location -Path $PSScriptRoot
+Set-Location -Path "$PSScriptRoot"
 
 $kmsServers = @(
     'kms.03k.org',
