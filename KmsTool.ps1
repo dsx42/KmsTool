@@ -637,6 +637,54 @@ function CreateOfficeDeploymentFile {
     Add-Content -Path configuration.xml -Value '</Configuration>'
 }
 
+function AutoActiveOfficeByKmsTool {
+    param([switch]$Enabled)
+
+    $ScheduledJob = Get-ScheduledJob -Name 'AutoActiveOfficeByKmsTool' -ErrorAction SilentlyContinue
+    if ($ScheduledJob) {
+        $JobTrigger = Get-JobTrigger -InputObject $ScheduledJob
+        if ($JobTrigger) {
+            Disable-JobTrigger -InputObject $JobTrigger
+            Remove-JobTrigger -InputObject $ScheduledJob
+        }
+        Disable-ScheduledJob -InputObject $ScheduledJob
+        Unregister-ScheduledJob -InputObject $ScheduledJob -Force
+    }
+
+    if (!$Enabled) {
+        return
+    }
+
+    $TimeSpan = New-Object -TypeName 'System.TimeSpan' -ArgumentList 24, 0, 0
+    $JobOption = New-ScheduledJobOption -RunElevated -RequireNetwork -ContinueIfGoingOnBattery -StartIfOnBattery
+    Register-ScheduledJob -ScriptBlock {
+        param($Path)
+
+        $OsppPath = ''
+        if (Test-Path -Path "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS" -PathType Leaf) {
+            $OsppPath = "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS"
+        }
+        elseif (Test-Path -Path "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS" -PathType Leaf) {
+            $OsppPath = "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS"
+        }
+        if (!$OsppPath) {
+            $ScheduledJob = Get-ScheduledJob -Name 'AutoActiveOfficeByKmsTool' -ErrorAction SilentlyContinue
+            if ($ScheduledJob) {
+                $JobTrigger = Get-JobTrigger -InputObject $ScheduledJob
+                if ($JobTrigger) {
+                    Disable-JobTrigger -InputObject $JobTrigger
+                    Remove-JobTrigger -InputObject $ScheduledJob
+                }
+                Disable-ScheduledJob -InputObject $ScheduledJob
+                Unregister-ScheduledJob -InputObject $ScheduledJob -Force
+            }
+            return
+        }
+
+        CScript //Nologo "$OsppPath" /act
+    } -Name 'AutoActiveOfficeByKmsTool' -ScheduledJobOption $JobOption -RunNow -RunEvery $TimeSpan | Out-Null
+}
+
 function ActiveOffice {
 
     Clear-Host
@@ -651,6 +699,7 @@ function ActiveOffice {
         $OsppPath = "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS"
     }
     if (!$OsppPath) {
+        AutoActiveOfficeByKmsTool
         Write-Host -Object ''
         Write-Warning -Message 'OSPP.VBS 文件不存在，未安装 Office 2021 批量授权版，无法激活'
         return
@@ -658,6 +707,7 @@ function ActiveOffice {
 
     $OfficeActiveInfo = GetOfficeActiveInfo -OsppPath $OsppPath
     if (!$OfficeActiveInfo['IsVolume']) {
+        AutoActiveOfficeByKmsTool
         Write-Host -Object ''
         Write-Warning -Message '未安装 Office 2021 批量授权版，无法激活'
         return
@@ -679,6 +729,7 @@ function ActiveOffice {
     $ValidKms = GetValidKmsServer -KmsHost $OfficeActiveInfo['KmsHost'] -KmsIp '' -OsppPath $OsppPath
     if (!$ValidKms) {
         CScript //Nologo "$OsppPath" /remhst | Out-Null
+        AutoActiveOfficeByKmsTool
         return
     }
 
@@ -688,16 +739,60 @@ function ActiveOffice {
     $NewActiveInfo = GetOfficeActiveInfo -OsppPath $OsppPath
     Write-Host -Object ''
     if ($NewActiveInfo['IsActive'] -and $OfficeActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
+        AutoActiveOfficeByKmsTool -Enabled
         Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活成功, 激活有效期至 ' `
                 + $NewActiveInfo['ActiveEndTime']) -ForegroundColor Green
     }
     elseif ($NewActiveInfo['ActiveEndTime']) {
+        AutoActiveOfficeByKmsTool -Enabled
         Write-Host -Object ($NewActiveInfo['Name'] + ' 批量授权版激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
             -ForegroundColor Green
     }
     else {
+        AutoActiveOfficeByKmsTool
         Write-Warning -Message ($NewActiveInfo['Name'] + ' 批量授权版激活失败')
     }
+}
+
+function AutoActiveWindowsByKmsTool {
+    param([switch]$Enabled)
+
+    $ScheduledJob = Get-ScheduledJob -Name 'AutoActiveWindowsByKmsTool' -ErrorAction SilentlyContinue
+    if ($ScheduledJob) {
+        $JobTrigger = Get-JobTrigger -InputObject $ScheduledJob
+        if ($JobTrigger) {
+            Disable-JobTrigger -InputObject $JobTrigger
+            Remove-JobTrigger -InputObject $ScheduledJob
+        }
+        Disable-ScheduledJob -InputObject $ScheduledJob
+        Unregister-ScheduledJob -InputObject $ScheduledJob -Force
+    }
+
+    if (!$Enabled) {
+        return
+    }
+
+    $TimeSpan = New-Object -TypeName 'System.TimeSpan' -ArgumentList 24, 0, 0
+    $JobOption = New-ScheduledJobOption -RunElevated -RequireNetwork -ContinueIfGoingOnBattery -StartIfOnBattery
+    Register-ScheduledJob -ScriptBlock {
+        param($Path)
+
+        if (!(Test-Path -Path "$env:windir\System32\slmgr.vbs" -PathType Leaf)) {
+            $ScheduledJob = Get-ScheduledJob -Name 'AutoActiveWindowsByKmsTool' -ErrorAction SilentlyContinue
+            if ($ScheduledJob) {
+                $JobTrigger = Get-JobTrigger -InputObject $ScheduledJob
+                if ($JobTrigger) {
+                    Disable-JobTrigger -InputObject $JobTrigger
+                    Remove-JobTrigger -InputObject $ScheduledJob
+                }
+                Disable-ScheduledJob -InputObject $ScheduledJob
+                Unregister-ScheduledJob -InputObject $ScheduledJob -Force
+            }
+            return
+        }
+
+        CScript //Nologo "$env:windir\System32\slmgr.vbs" /ato
+    } -Name 'AutoActiveWindowsByKmsTool' -ScheduledJobOption $JobOption -RunNow -RunEvery $TimeSpan | Out-Null
 }
 
 function ActiveWindows {
@@ -708,12 +803,14 @@ function ActiveWindows {
 
     $SystemInfo = Get-CimInstance -ClassName Win32_OperatingSystem
     if (!$SystemInfo.Caption.Contains('10') -and !$SystemInfo.Caption.Contains('11')) {
+        AutoActiveWindowsByKmsTool
         Write-Host -Object ''
         Write-Warning -Message "不支持激活 $($SystemInfo.Caption)"
         return
     }
 
     if (!(Test-Path -Path "$env:windir\System32\slmgr.vbs" -PathType Leaf)) {
+        AutoActiveWindowsByKmsTool
         Write-Host -Object ''
         Write-Warning -Message "$env:windir\System32\slmgr.vbs 文件不存在，无法激活 $($SystemInfo.Caption)"
         return
@@ -735,6 +832,7 @@ function ActiveWindows {
 
     $Gvlk = GetWindowsGvlk -WindowsActiveInfo $WindowsActiveInfo
     if ($null -eq $Gvlk) {
+        AutoActiveWindowsByKmsTool
         return
     }
 
@@ -749,6 +847,7 @@ function ActiveWindows {
         -OsppPath $null
     if (!$ValidKms) {
         CScript //Nologo "$env:windir\System32\slmgr.vbs" /ckms | Out-Null
+        AutoActiveWindowsByKmsTool
         return
     }
 
@@ -758,14 +857,17 @@ function ActiveWindows {
     $NewActiveInfo = GetWindowsActiveInfo
     Write-Host -Object ''
     if ($NewActiveInfo['IsActive'] -and $WindowsActiveInfo['ActiveEndTime'] -ne $NewActiveInfo['ActiveEndTime']) {
+        AutoActiveWindowsByKmsTool -Enabled
         Write-Host -Object ($SystemInfo.Caption + ' 激活成功, 激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
             -ForegroundColor Green
     }
     elseif ($NewActiveInfo['ActiveEndTime']) {
+        AutoActiveWindowsByKmsTool -Enabled
         Write-Host -Object ($SystemInfo.Caption + ' 激活有效期至 ' + $NewActiveInfo['ActiveEndTime']) `
             -ForegroundColor Green
     }
     else {
+        AutoActiveWindowsByKmsTool
         Write-Warning -Message ($SystemInfo.Caption + ' 激活失败')
     }
 }
