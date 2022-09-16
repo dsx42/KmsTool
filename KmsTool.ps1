@@ -8,8 +8,20 @@ function RequireAdmin {
         -ArgumentList $CurrentWindowsID
     $Admin = $CurrentWindowsPrincipal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
     if (!$Admin) {
+        $ScriptFile = $Script:PSCommandPath
+        $ScriptParams = ''
+        if ($null -ne $Script:PSBoundParameters -and ${Script:PSBoundParameters}.Count -gt 0) {
+            foreach ($ScriptParam in ${script:PSBoundParameters}.GetEnumerator()) {
+                if ($ScriptParam.Value -is [System.Management.Automation.SwitchParameter]) {
+                    $ScriptParams = $ScriptParams + ' -' + $ScriptParam.Key
+                }
+                else {
+                    $ScriptParams = $ScriptParams + ' -' + $ScriptParam.Key + ' ' + $ScriptParam.Value
+                }
+            }
+        }
         Start-Process -FilePath PowerShell.exe -ArgumentList `
-            "-NoProfile -ExecutionPolicy RemoteSigned -File `"$PSCommandPath`" $PSBoundParameters" -Verb RunAs `
+            "-NoProfile -ExecutionPolicy RemoteSigned -File `"$ScriptFile`"$ScriptParams" -Verb RunAs `
             -WindowStyle Normal
         [System.Environment]::Exit(0)
     }
