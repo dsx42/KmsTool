@@ -1,17 +1,17 @@
 ﻿Clear-Host
 
-Set-Location -Path $PSScriptRoot
+Set-Location -Path "$PSScriptRoot"
 
 $ProductJsonPath = "$PSScriptRoot\product.json"
 
-if (!(Test-Path -Path $ProductJsonPath -PathType Leaf)) {
+if (!(Test-Path -Path "$ProductJsonPath" -PathType Leaf)) {
     Write-Warning -Message ("$ProductJsonPath 不存在")
     [System.Environment]::Exit(0)
 }
 
 $ProductInfo = $null
 try {
-    $ProductInfo = Get-Content -Path $ProductJsonPath | ConvertFrom-Json
+    $ProductInfo = Get-Content -Path "$ProductJsonPath" | ConvertFrom-Json
 }
 catch {
     Write-Warning -Message ("$ProductJsonPath 解析失败")
@@ -52,21 +52,21 @@ $OutputFileName = "${ProjectName}_v$Version"
 $ZipFilePath = "$OutputPath\$OutputFileName.zip"
 $Sha256FilePath = "$OutputPath\$OutputFileName.sha256"
 
-if (Test-Path -Path $OutputPath -PathType Container) {
-    Remove-Item -Path $OutputPath -Recurse -Force
+if (Test-Path -Path "$OutputPath" -PathType Container) {
+    Remove-Item -Path "$OutputPath" -Recurse -Force
 }
 
-New-Item -Path $OutputProjectPath -ItemType Directory -Force | Out-Null
+New-Item -Path "$OutputProjectPath" -ItemType Directory -Force | Out-Null
 
-Copy-Item -Path $CopyFiles -Destination $OutputProjectPath -Force -Recurse
+Copy-Item -Path $CopyFiles -Destination "$OutputProjectPath" -Force -Recurse
 
-Compress-Archive -Path $OutputProjectPath -DestinationPath $ZipFilePath -Force
+Compress-Archive -Path "$OutputProjectPath" -DestinationPath "$ZipFilePath" -Force
 
-$Hash = Get-FileHash -Path $ZipFilePath -Algorithm SHA256
+$Hash = Get-FileHash -Path "$ZipFilePath" -Algorithm SHA256
 
 $Checksum = $Hash.Hash + " $OutputFileName.zip"
 
-Add-Content -Path $Sha256FilePath -Value $Checksum
+Add-Content -Path "$Sha256FilePath" -Value "$Checksum"
 
 Write-Host -Object ''
 Write-Host -Object ('Path: ' + $Hash.Path)
