@@ -8,13 +8,13 @@
 
 # 下载
 
-从如下链接下载最新的版本：`KmsTool_版本号.zip`
+从如下链接下载最新的版本：`KmsTool_v2023.2.16.zip`
 
 > https://github.com/dsx42/KmsTool/releases
 
 # 如何使用本工具？
 
-解压下载好的压缩包，双击解压后的 `KmsTool.cmd` 即可
+解压下载好的压缩包，双击解压后的 `KmsTool.cmd`，按照提示操作即可
 
 # 依赖
 
