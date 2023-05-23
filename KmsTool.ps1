@@ -21,7 +21,7 @@ function RequireAdmin {
             }
         }
         Start-Process -FilePath PowerShell.exe -ArgumentList `
-            "-NoProfile -ExecutionPolicy RemoteSigned -File `"$ScriptFile`"$ScriptParams" -Verb RunAs `
+            "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptFile`"$ScriptParams" -Verb RunAs `
             -WindowStyle Normal
         [System.Environment]::Exit(0)
     }

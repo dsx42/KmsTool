@@ -1,1 +1,1 @@
-PowerShell -NoProfile -ExecutionPolicy RemoteSigned -File "%~dp0KmsTool.ps1"
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "%~dp0KmsTool.ps1"
