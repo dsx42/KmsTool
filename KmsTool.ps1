@@ -566,9 +566,6 @@ function AddSubElement {
     if (!$NeedOfficeProducts.Contains('Publisher')) {
         Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Publisher" />'
     }
-    if (!$NeedOfficeProducts.Contains('Teams')) {
-        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Teams" />'
-    }
     if (!$NeedOfficeProducts.Contains('Word')) {
         Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Word" />'
     }
@@ -885,7 +882,6 @@ function InstallOffice {
         'OneDrive'   = 'OneDrive';
         'Visio'      = 'Visio';
         'Project'    = 'Project';
-        'Teams'      = 'Teams';
         'Lync'       = 'Skype';
         'Access'     = 'Access';
         'Publisher'  = 'Publisher'
