@@ -3,7 +3,7 @@
     "author": "dsx42",
     "license": "GPL-3.0",
     "home": "https://github.com/dsx42/KmsTool",
-    "version": "2023.10.7",
+    "version": "2023.11.26",
     "files": [
         "KmsTool.cmd",
         "KmsTool.ps1",
