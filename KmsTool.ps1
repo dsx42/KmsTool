@@ -80,31 +80,31 @@ function GetOfficeActiveInfo {
         }
 
         if ($Result.Contains('LICENSE NAME: ')) {
-            if ($Result.Contains('Office21Project')) {
+            if ($Result.Contains('Office24Project')) {
                 $OldName = $OfficeActiveInfo['Name']
                 if (!$OldName) {
-                    $OfficeActiveInfo['Name'] = 'Project 2021'
+                    $OfficeActiveInfo['Name'] = 'Project 2024'
                 }
                 else {
-                    $OfficeActiveInfo['Name'] = $OldName + ', Project 2021'
+                    $OfficeActiveInfo['Name'] = $OldName + ', Project 2024'
                 }
             }
-            elseif ($Result.Contains('Office21Visio')) {
+            elseif ($Result.Contains('Office24Visio')) {
                 $OldName = $OfficeActiveInfo['Name']
                 if (!$OldName) {
-                    $OfficeActiveInfo['Name'] = 'Visio 2021'
+                    $OfficeActiveInfo['Name'] = 'Visio 2024'
                 }
                 else {
-                    $OfficeActiveInfo['Name'] = $OldName + ', Visio 2021'
+                    $OfficeActiveInfo['Name'] = $OldName + ', Visio 2024'
                 }
             }
-            elseif ($Result.Contains('Office21ProPlus') -or $Result.Contains('Office21Standard')) {
+            elseif ($Result.Contains('Office24ProPlus') -or $Result.Contains('Office24Standard')) {
                 $OldName = $OfficeActiveInfo['Name']
                 if (!$OldName) {
-                    $OfficeActiveInfo['Name'] = 'Office 2021'
+                    $OfficeActiveInfo['Name'] = 'Office 2024'
                 }
                 else {
-                    $OfficeActiveInfo['Name'] = $OldName + ', Office 2021'
+                    $OfficeActiveInfo['Name'] = $OldName + ', Office 2024'
                 }
             }
             continue
@@ -462,7 +462,7 @@ function ConfirmOfficeProducts {
 
     Write-Host -Object ''
     if ($NeedOfficeProducts.Count -le 0) {
-        Write-Warning -Message '未选择安装任何 Office 2021 组件'
+        Write-Warning -Message '未选择安装任何 Office 2024 组件'
         while ($true) {
             Write-Host -Object ''
             $InputOption = Read-Host -Prompt '请选择 (0: 退出安装; 2: 重置所有选择), 按回车键确认'
@@ -482,7 +482,7 @@ function ConfirmOfficeProducts {
         }
     }
 
-    Write-Host -Object '选择安装的 Office 2021 组件如下:'
+    Write-Host -Object '选择安装的 Office 2024 组件如下:'
     foreach ($Product in $NeedOfficeProducts.GetEnumerator()) {
         if ($Product.Value) {
             Write-Host -Object ''
@@ -563,9 +563,6 @@ function AddSubElement {
     if (!$NeedOfficeProducts.Contains('PowerPoint')) {
         Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="PowerPoint" />'
     }
-    if (!$NeedOfficeProducts.Contains('Publisher')) {
-        Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Publisher" />'
-    }
     if (!$NeedOfficeProducts.Contains('Word')) {
         Add-Content -Path configuration.xml -Value '            <ExcludeApp ID="Word" />'
     }
@@ -591,22 +588,22 @@ function CreateOfficeDeploymentFile {
 
     Add-Content -Path configuration.xml -Value '<Configuration>'
     Add-Content -Path configuration.xml -Value ("    <Add OfficeClientEdition=`"$OfficeClientEdition`"" `
-            + " Channel=`"PerpetualVL2021`">")
-    Add-Content -Path configuration.xml -Value ('        <Product ID="ProPlus2021Volume"' `
-            + ' PIDKEY="FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH">')
+            + " Channel=`"PerpetualVL2024`">")
+    Add-Content -Path configuration.xml -Value ('        <Product ID="ProPlus2024Volume"' `
+            + ' PIDKEY="XJ2XN-FW8RK-P4HMP-DKDBV-GCVGB">')
     AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
     Add-Content -Path configuration.xml -Value '        </Product>'
     if ($NeedOfficeProducts.Contains('Visio')) {
         Add-Content -Path configuration.xml -Value ''
-        Add-Content -Path configuration.xml -Value ('        <Product ID="VisioPro2021Volume"' `
-                + ' PIDKEY="KNH8D-FGHT4-T8RK3-CTDYJ-K2HT4">')
+        Add-Content -Path configuration.xml -Value ('        <Product ID="VisioPro2024Volume"' `
+                + ' PIDKEY="B7TN8-FJ8V3-7QYCP-HQPMV-YY89G">')
         AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
         Add-Content -Path configuration.xml -Value '        </Product>'
     }
     if ($NeedOfficeProducts.Contains('Project')) {
         Add-Content -Path configuration.xml -Value ''
-        Add-Content -Path configuration.xml -Value ('        <Product ID="ProjectPro2021Volume"' `
-                + ' PIDKEY="FTNWT-C6WBT-8HMGF-K9PRX-QV9H8">')
+        Add-Content -Path configuration.xml -Value ('        <Product ID="ProjectPro2024Volume"' `
+                + ' PIDKEY="FQQ23-N4YCY-73HQ3-FM9WC-76HF4">')
         AddSubElement -NeedOfficeProducts $NeedOfficeProducts -Language $Language
         Add-Content -Path configuration.xml -Value '        </Product>'
     }
@@ -621,6 +618,7 @@ function CreateOfficeDeploymentFile {
     Add-Content -Path configuration.xml -Value '    <Updates Enabled="TRUE" />'
     Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <RemoveMSI />'
+    Add-Content -Path configuration.xml -Value '    <Remove All="TRUE" />'
     Add-Content -Path configuration.xml -Value ''
     Add-Content -Path configuration.xml -Value '    <AppSettings>'
     Add-Content -Path configuration.xml -Value ('        <User Key="software\microsoft\office\16.0\common" ' `
@@ -686,7 +684,7 @@ function ActiveOffice {
 
     Clear-Host
     Write-Host -Object ''
-    Write-Host -Object '正在检测是否安装 Office 2021 批量授权版，请勿关闭此窗口'
+    Write-Host -Object '正在检测是否安装 Office 2024 批量授权版，请勿关闭此窗口'
 
     $OsppPath = ''
     if (Test-Path -Path "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS" -PathType Leaf) {
@@ -698,7 +696,7 @@ function ActiveOffice {
     if (!$OsppPath) {
         AutoActiveOfficeByKmsTool
         Write-Host -Object ''
-        Write-Warning -Message 'OSPP.VBS 文件不存在，未安装 Office 2021 批量授权版，无法激活'
+        Write-Warning -Message 'OSPP.VBS 文件不存在，未安装 Office 2024 批量授权版，无法激活'
         return
     }
 
@@ -706,7 +704,7 @@ function ActiveOffice {
     if (!$OfficeActiveInfo['IsVolume']) {
         AutoActiveOfficeByKmsTool
         Write-Host -Object ''
-        Write-Warning -Message '未安装 Office 2021 批量授权版，无法激活'
+        Write-Warning -Message '未安装 Office 2024 批量授权版，无法激活'
         return
     }
 
@@ -883,8 +881,7 @@ function InstallOffice {
         'Visio'      = 'Visio';
         'Project'    = 'Project';
         'Lync'       = 'Skype';
-        'Access'     = 'Access';
-        'Publisher'  = 'Publisher'
+        'Access'     = 'Access'
     }
 
     $NeedOfficeProducts = [ordered]@{}
@@ -920,16 +917,16 @@ function InstallOffice {
     Set-Location -Path "$PSScriptRoot"
 
     Write-Host -Object ''
-    Write-Host -Object '正在下载 Office 2021 批量授权版安装文件，耗时较长，请勿关闭此窗口'
+    Write-Host -Object '正在下载 Office 2024 批量授权版安装文件，耗时较长，请勿关闭此窗口'
     .\setup.exe /download configuration.xml
     Write-Host -Object ''
-    Write-Host -Object 'Office 2021 批量授权版安装文件下载成功' -ForegroundColor Green
+    Write-Host -Object 'Office 2024 批量授权版安装文件下载成功' -ForegroundColor Green
 
     Write-Host -Object ''
-    Write-Host -Object '正在安装 Office 2021 批量授权版，耗时较长，请勿关闭此窗口'
+    Write-Host -Object '正在安装 Office 2024 批量授权版，耗时较长，请勿关闭此窗口'
     .\setup.exe /configure configuration.xml
     Write-Host -Object ''
-    Write-Host -Object 'Office 2021 批量授权版安装完成' -ForegroundColor Green
+    Write-Host -Object 'Office 2024 批量授权版安装完成' -ForegroundColor Green
 
     ActiveOffice
 }
@@ -985,8 +982,8 @@ function MainMenu {
     Clear-Host
 
     $Options = [ordered]@{
-        '1' = '安装 Office 2021 批量授权版';
-        '2' = '激活 Office 2021 批量授权版';
+        '1' = '安装 Office 2024 批量授权版';
+        '2' = '激活 Office 2024 批量授权版';
         '3' = '激活 Windows 10/11 批量授权版';
         '4' = '清理 Office 安装文件缓存';
         '5' = '创建桌面快捷方式';

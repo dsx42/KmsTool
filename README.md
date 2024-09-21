@@ -1,14 +1,14 @@
 # KmsTool 简介
 
-* Office LTSC 专业增强版 2021 批量许可证版安装和激活
-* Visio LTSC 专业版 2021 批量许可证版安装和激活
-* Project 专业版 2021 批量许可证版安装和激活
+* Office LTSC 专业增强版 2024 批量许可证版安装和激活
+* Visio LTSC 专业版 2024 批量许可证版安装和激活
+* Project 专业版 2024 批量许可证版安装和激活
 * Windows 10 批量许可证版激活
 * Windows 11 批量许可证版激活
 
 # 下载
 
-从如下链接下载最新的版本：`KmsTool_v2023.11.26.zip`
+从如下链接下载最新的版本：`KmsTool_v2024.9.21.zip`
 
 > https://github.com/dsx42/KmsTool/releases
 
