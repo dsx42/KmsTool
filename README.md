@@ -8,7 +8,7 @@
 
 # 下载
 
-从如下链接下载最新的版本：`KmsTool_v2024.12.28.zip`
+从如下链接下载最新的版本：`KmsTool_v2025.1.27.zip`
 
 > https://github.com/dsx42/KmsTool/releases
 
